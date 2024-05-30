@@ -21,7 +21,7 @@ const (
 	port     = 5432
 	user     = "postgres"
 	password = "Infinitive"
-	dbname   = "d.karataevDB"
+	dbname   = "d.mukhamedinDB"
 )
 
 var (
@@ -114,7 +114,7 @@ func initDB(dsn string) *gorm.DB {
 }
 
 func SendEmail(to, activationLink string) error {
-	from := "karataev020902@gmail.com"
+	from := os.Getenv("SMTP_MAIL")
 	pass := os.Getenv("SMTP_KEY")
 
 	e := email.NewEmail()
