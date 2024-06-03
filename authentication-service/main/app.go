@@ -69,6 +69,9 @@ func setupRoutes(db *gorm.DB) *mux.Router {
 	auth.HandleFunc("/admin/users/{id}", editUserInfoHandler).Methods("PUT")
 	auth.HandleFunc("/admin/users/{id}", deleteUserInfoHandler).Methods("DELETE")
 
+	// Token validation route
+	r.HandleFunc("/validate-token", ValidateTokenHandler).Methods("GET")
+
 	return r
 }
 
@@ -404,4 +407,41 @@ func AdminAuthMiddleware() mux.MiddlewareFunc {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func ValidateTokenHandler(w http.ResponseWriter, r *http.Request) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
+		return
+	}
+	tokenString := authHeader[len("Bearer "):]
+
+	claims := &model.Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtSecret, nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	jsonResponse, err := json.Marshal(map[string]interface{}{
+		"message": "Token is valid",
+		"user": map[string]interface{}{
+			"UserId":      claims.UserId,
+			"Username":    claims.Username,
+			"Email":       claims.Email,
+			"IsActivated": claims.IsActivated,
+			"ROLE":        claims.ROLE,
+		},
+	})
+	if err != nil {
+		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonResponse)
 }
