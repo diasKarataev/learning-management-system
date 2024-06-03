@@ -5,7 +5,8 @@ CREATE TABLE courses (
                          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                          title TEXT NOT NULL,
-                         description TEXT
+                         description TEXT,
+                         deleted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 -- +goose StatementEnd
 

@@ -2,17 +2,19 @@ package main
 
 import (
 	"fmt"
-	"lms-crud-api/cmd/api/handlers"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/pressly/goose"
 	"github.com/rs/zerolog"
+	"lms-crud-api/cmd/api/handlers"
 	"lms-crud-api/internal/data"
 )
 
@@ -34,13 +36,23 @@ func main() {
 	var cfg config
 	cfg.port = 4000
 	cfg.env = "development"
-	cfg.db.dsn = "postgres://postgres:91926499@localhost/lmscrud?sslmode=disable"
+	cfg.db.dsn = "postgres://postgres:Infinitive@localhost/lms-service?sslmode=disable"
 
 	db, err := openDB(cfg)
 	if err != nil {
 		log.Fatalln("Failed to connect to database")
 	}
 	defer db.Close()
+
+	// Applying migrations
+	sqlDB := db.DB()
+	if err != nil {
+		log.Fatalf("Error getting DB object: %v", err)
+	}
+	err = goose.Up(sqlDB, "./migrations")
+	if err != nil {
+		log.Fatalf("Error applying migrations: %v", err)
+	}
 
 	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger()
 	app := &application{

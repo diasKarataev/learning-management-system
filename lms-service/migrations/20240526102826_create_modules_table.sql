@@ -5,7 +5,8 @@ CREATE TABLE modules (
                          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                          title TEXT NOT NULL,
-                         course_id INTEGER REFERENCES courses (id)
+                         course_id INTEGER REFERENCES courses (id),
+                         deleted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 -- +goose StatementEnd
 
