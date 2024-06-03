@@ -64,26 +64,26 @@ func main() {
 	router := gin.Default()
 
 	coursesHandler := &handlers.CoursesHandler{Models: app.models}
-	router.POST("/v1/courses", coursesHandler.CreateCourseHandler)
-	router.GET("/v1/courses", coursesHandler.ShowAllCoursesHandler)
-	router.GET("/v1/courses/:id", coursesHandler.ShowCourseHandler)
-	router.PUT("/v1/courses/:id", coursesHandler.UpdateCourseHandler)
-	router.DELETE("/v1/courses/:id", coursesHandler.DeleteCourseHandler)
+	router.POST("/lms/courses", coursesHandler.CreateCourseHandler)
+	router.GET("/api/lms/courses", coursesHandler.ShowAllCoursesHandler)
+	router.GET("/lms/courses/:id", coursesHandler.ShowCourseHandler)
+	router.PUT("/lms/courses/:id", coursesHandler.UpdateCourseHandler)
+	router.DELETE("/lms/courses/:id", coursesHandler.DeleteCourseHandler)
 
 	modulesHandler := &handlers.ModulesHandler{Models: app.models}
-	router.POST("/v1/modules", modulesHandler.CreateModuleHandler)
-	router.GET("/v1/modules/course/:id", modulesHandler.ShowModulesForCourseHandler)
-	router.GET("/v1/modules", modulesHandler.ShowAllModulesHandler)
-	router.GET("/v1/modules/:id", modulesHandler.ShowModuleHandler)
-	router.PUT("/v1/modules/:id", modulesHandler.UpdateModuleHandler)
-	router.DELETE("/v1/modules/:id", modulesHandler.DeleteModuleHandler)
+	router.POST("/lms/modules", modulesHandler.CreateModuleHandler)
+	router.GET("/lms/modules/course/:id", modulesHandler.ShowModulesForCourseHandler)
+	router.GET("/lms/modules", modulesHandler.ShowAllModulesHandler)
+	router.GET("/lms/modules/:id", modulesHandler.ShowModuleHandler)
+	router.PUT("/lms/modules/:id", modulesHandler.UpdateModuleHandler)
+	router.DELETE("/lms/modules/:id", modulesHandler.DeleteModuleHandler)
 
 	lessonsHandler := &handlers.LessonsHandler{Models: app.models}
-	router.POST("/v1/lessons", lessonsHandler.CreateLessonHandler)
-	router.GET("/v1/lessons/module/:id", lessonsHandler.ShowAllLessonsForModuleHandler)
-	router.GET("/v1/lessons/:id", lessonsHandler.ShowLessonHandler)
-	router.PUT("/v1/lessons/:id", lessonsHandler.UpdateLessonHandler)
-	router.DELETE("/v1/lessons/:id", lessonsHandler.DeleteLessonHandler)
+	router.POST("/lms/lessons", lessonsHandler.CreateLessonHandler)
+	router.GET("/lms/lessons/module/:id", lessonsHandler.ShowAllLessonsForModuleHandler)
+	router.GET("/lms/lessons/:id", lessonsHandler.ShowLessonHandler)
+	router.PUT("/lms/lessons/:id", lessonsHandler.UpdateLessonHandler)
+	router.DELETE("/lms/lessons/:id", lessonsHandler.DeleteLessonHandler)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),
