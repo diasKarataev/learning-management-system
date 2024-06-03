@@ -7,7 +7,8 @@ CREATE TABLE lessons (
                          title TEXT NOT NULL,
                          link TEXT,
                          conspect TEXT,
-                         module_id INTEGER REFERENCES modules (id)
+                         module_id INTEGER REFERENCES modules (id),
+                         deleted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 -- +goose StatementEnd
 
