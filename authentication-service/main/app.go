@@ -15,6 +15,7 @@ import (
 	"gorm.io/gorm/logger"
 	"log"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -32,7 +33,23 @@ var (
 	tokenExpiresIn = time.Hour * 24
 )
 
+var loggerFile *os.File
+
+func init() {
+	// Create or open the log file
+	var err error
+	loggerFile, err = os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatalf("Failed to open log file: %v", err)
+	}
+
+	// Set log output to file
+	log.SetOutput(loggerFile)
+}
+
 func main() {
+	defer loggerFile.Close()
+
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=UTC", host, user, password, dbname, port)
 	db := initDB(dsn)
 
@@ -50,6 +67,7 @@ func main() {
 	log.Println("Сервер запущен на :8080")
 	http.ListenAndServe(":8080", r)
 }
+
 func setupRoutes(db *gorm.DB) *mux.Router {
 	r := mux.NewRouter()
 	// Public routes
@@ -93,6 +111,7 @@ func getUserInfoHandler(writer http.ResponseWriter, request *http.Request) {
 	var user data.UserInfo
 	if err := db.First(&user, userID).Error; err != nil {
 		http.Error(writer, "User not found", http.StatusNotFound)
+		log.Printf("User not found: %v", err)
 		return
 	}
 
@@ -106,12 +125,14 @@ func editUserInfoHandler(writer http.ResponseWriter, request *http.Request) {
 	var user data.UserInfo
 	if err := db.First(&user, userID).Error; err != nil {
 		http.Error(writer, "User not found", http.StatusNotFound)
+		log.Printf("User not found: %v", err)
 		return
 	}
 
 	var updatedUser data.UserInfo
 	if err := json.NewDecoder(request.Body).Decode(&updatedUser); err != nil {
 		http.Error(writer, "Invalid input", http.StatusBadRequest)
+		log.Printf("Invalid input: %v", err)
 		return
 	}
 
@@ -123,6 +144,7 @@ func editUserInfoHandler(writer http.ResponseWriter, request *http.Request) {
 
 	if err := db.Save(&user).Error; err != nil {
 		http.Error(writer, "Failed to update user", http.StatusInternalServerError)
+		log.Printf("Failed to update user: %v", err)
 		return
 	}
 
@@ -133,6 +155,7 @@ func getAllUserInfoHandler(w http.ResponseWriter, r *http.Request) {
 	var users []data.UserInfo
 	if err := db.Find(&users).Error; err != nil {
 		http.Error(w, "Failed to fetch users", http.StatusInternalServerError)
+		log.Printf("Failed to fetch users: %v", err)
 		return
 	}
 
@@ -152,6 +175,7 @@ func getAllUserInfoHandler(w http.ResponseWriter, r *http.Request) {
 	jsonResponse, err := json.Marshal(usersResponse)
 	if err != nil {
 		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
+		log.Printf("Failed to marshal response: %v", err)
 		return
 	}
 
@@ -165,6 +189,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		http.Error(w, "Invalid input", http.StatusBadRequest)
+		log.Printf("Invalid input: %v", err)
 		return
 	}
 
@@ -173,12 +198,14 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	err = db.Where("email = ?", user.Email).First(&existingEmailUser).Error
 	if err == nil {
 		http.Error(w, "Email already exists", http.StatusConflict)
+		log.Printf("Email already exists: %v", err)
 		return
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword(user.PasswordHash, bcrypt.DefaultCost)
 	if err != nil {
 		http.Error(w, "Failed to hash password", http.StatusInternalServerError)
+		log.Printf("Failed to hash password: %v", err)
 		return
 	}
 
@@ -189,11 +216,13 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := db.Create(&user).Error; err != nil {
 		http.Error(w, "Failed to create user", http.StatusInternalServerError)
+		log.Printf("Failed to create user: %v", err)
 		return
 	}
 
 	if err := SendActivationEmail(user.Email, user.ActivationLink); err != nil {
 		http.Error(w, "Failed to send activation email", http.StatusInternalServerError)
+		log.Printf("Failed to send activation email: %v", err)
 		return
 	}
 
@@ -209,6 +238,7 @@ func ResendActivationLinkHandler(w http.ResponseWriter, r *http.Request) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
+		log.Println("Missing Authorization header")
 		return
 	}
 	tokenString := authHeader[len("Bearer "):]
@@ -219,18 +249,21 @@ func ResendActivationLinkHandler(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil || !token.Valid {
 		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		log.Printf("Invalid token: %v", err)
 		return
 	}
 
 	userId := claims.UserId
 	if userId == 0 {
 		http.Error(w, "UserId is required", http.StatusBadRequest)
+		log.Println("UserId is required")
 		return
 	}
 
 	var user data.UserInfo
 	if err := db.Where("id = ?", userId).First(&user).Error; err != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
+		log.Printf("User not found: %v", err)
 		return
 	}
 
@@ -239,17 +272,20 @@ func ResendActivationLinkHandler(w http.ResponseWriter, r *http.Request) {
 	user.ActivationLink = newActivationLink
 	if err := db.Save(&user).Error; err != nil {
 		http.Error(w, "Failed to update ActivationLink", http.StatusInternalServerError)
+		log.Printf("Failed to update ActivationLink: %v", err)
 		return
 	}
 
 	if err := SendActivationEmail(user.Email, user.ActivationLink); err != nil {
 		http.Error(w, "Failed to send activation email", http.StatusInternalServerError)
+		log.Printf("Failed to send activation email: %v", err)
 		return
 	}
 
 	jsonResponse, err := json.Marshal(map[string]string{"message": "Activation link resent successfully"})
 	if err != nil {
 		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
+		log.Printf("Failed to marshal response: %v", err)
 		return
 	}
 
@@ -263,29 +299,34 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&loginRequest)
 	if err != nil {
 		http.Error(w, "Invalid input", http.StatusBadRequest)
+		log.Printf("Invalid input: %v", err)
 		return
 	}
 
 	var user data.UserInfo
 	if err := db.Where("email = ?", loginRequest.Email).First(&user).Error; err != nil {
 		http.Error(w, "User not found", http.StatusUnauthorized)
+		log.Printf("User not found: %v", err)
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(loginRequest.Password)); err != nil {
 		http.Error(w, "Incorrect password", http.StatusUnauthorized)
+		log.Printf("Incorrect password: %v", err)
 		return
 	}
 
 	token, err := GenerateToken(user.ID, user.FName, user.Email, user.Activated, user.UserRole)
 	if err != nil {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		log.Printf("Failed to generate token: %v", err)
 		return
 	}
 
 	jsonResponse, err := json.Marshal(model.TokenResponse{Token: token})
 	if err != nil {
 		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
+		log.Printf("Failed to marshal response: %v", err)
 		return
 	}
 
@@ -300,12 +341,14 @@ func ActivateHandler(w http.ResponseWriter, r *http.Request) {
 	var user data.UserInfo
 	if err := db.Where("activation_link = ?", activationLink).First(&user).Error; err != nil {
 		http.Error(w, "Activation link not found", http.StatusNotFound)
+		log.Printf("Activation link not found: %v", err)
 		return
 	}
 
 	user.Activated = true
 	if err := db.Save(&user).Error; err != nil {
 		http.Error(w, "Failed to activate user", http.StatusInternalServerError)
+		log.Printf("Failed to activate user: %v", err)
 		return
 	}
 
@@ -340,11 +383,13 @@ func deleteUserInfoHandler(writer http.ResponseWriter, request *http.Request) {
 	var user data.UserInfo
 	if err := db.First(&user, userID).Error; err != nil {
 		http.Error(writer, "User not found", http.StatusNotFound)
+		log.Printf("User not found: %v", err)
 		return
 	}
 
 	if err := db.Delete(&user).Error; err != nil {
 		http.Error(writer, "Failed to delete user", http.StatusInternalServerError)
+		log.Printf("Failed to delete user: %v", err)
 		return
 	}
 
@@ -357,6 +402,7 @@ func AuthMiddleware() mux.MiddlewareFunc {
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
 				http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
+				log.Println("Missing Authorization header")
 				return
 			}
 			tokenString := authHeader[len("Bearer "):]
@@ -367,11 +413,13 @@ func AuthMiddleware() mux.MiddlewareFunc {
 			})
 			if err != nil || !token.Valid {
 				http.Error(w, "Invalid token", http.StatusUnauthorized)
+				log.Printf("Invalid token: %v", err)
 				return
 			}
 
 			if !claims.IsActivated {
 				http.Error(w, "User not activated", http.StatusForbidden)
+				log.Println("User not activated")
 				return
 			}
 
@@ -386,6 +434,7 @@ func AdminAuthMiddleware() mux.MiddlewareFunc {
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
 				http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
+				log.Println("Missing Authorization header")
 				return
 			}
 			tokenString := authHeader[len("Bearer "):]
@@ -396,11 +445,13 @@ func AdminAuthMiddleware() mux.MiddlewareFunc {
 			})
 			if err != nil || !token.Valid {
 				http.Error(w, "Invalid token", http.StatusUnauthorized)
+				log.Printf("Invalid token: %v", err)
 				return
 			}
 
 			if claims.ROLE != "ADMIN" {
 				http.Error(w, "Unauthorized", http.StatusForbidden)
+				log.Println("Unauthorized access attempt")
 				return
 			}
 
@@ -413,6 +464,7 @@ func ValidateTokenHandler(w http.ResponseWriter, r *http.Request) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
+		log.Println("Missing Authorization header")
 		return
 	}
 	tokenString := authHeader[len("Bearer "):]
@@ -423,6 +475,7 @@ func ValidateTokenHandler(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil || !token.Valid {
 		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		log.Printf("Invalid token: %v", err)
 		return
 	}
 
@@ -438,6 +491,7 @@ func ValidateTokenHandler(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
+		log.Printf("Failed to marshal response: %v", err)
 		return
 	}
 
