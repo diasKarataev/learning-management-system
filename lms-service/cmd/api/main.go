@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"lms-crud-api/middleware"
 	"log"
 	"net/http"
 	"os"
@@ -24,6 +25,7 @@ type config struct {
 	db   struct {
 		dsn string
 	}
+	secretKey string
 }
 
 type application struct {
@@ -37,6 +39,7 @@ func main() {
 	cfg.port = 4000
 	cfg.env = "development"
 	cfg.db.dsn = "postgres://postgres:Infinitive@localhost/lms-service?sslmode=disable"
+	cfg.secretKey = "JWT_SECRET"
 
 	db, err := openDB(cfg)
 	if err != nil {
@@ -63,27 +66,29 @@ func main() {
 
 	router := gin.Default()
 
+	authMiddleware := middleware.AuthMiddleware(cfg.secretKey)
+
 	coursesHandler := &handlers.CoursesHandler{Models: app.models}
-	router.POST("/lms/courses", coursesHandler.CreateCourseHandler)
-	router.GET("/api/lms/courses", coursesHandler.ShowAllCoursesHandler)
-	router.GET("/lms/courses/:id", coursesHandler.ShowCourseHandler)
-	router.PUT("/lms/courses/:id", coursesHandler.UpdateCourseHandler)
-	router.DELETE("/lms/courses/:id", coursesHandler.DeleteCourseHandler)
+	router.POST("/lms/courses", authMiddleware, coursesHandler.CreateCourseHandler)
+	router.GET("/api/lms/courses", authMiddleware, coursesHandler.ShowAllCoursesHandler)
+	router.GET("/lms/courses/:id", authMiddleware, coursesHandler.ShowCourseHandler)
+	router.PUT("/lms/courses/:id", authMiddleware, coursesHandler.UpdateCourseHandler)
+	router.DELETE("/lms/courses/:id", authMiddleware, coursesHandler.DeleteCourseHandler)
 
 	modulesHandler := &handlers.ModulesHandler{Models: app.models}
-	router.POST("/lms/modules", modulesHandler.CreateModuleHandler)
-	router.GET("/lms/modules/course/:id", modulesHandler.ShowModulesForCourseHandler)
-	router.GET("/lms/modules", modulesHandler.ShowAllModulesHandler)
-	router.GET("/lms/modules/:id", modulesHandler.ShowModuleHandler)
-	router.PUT("/lms/modules/:id", modulesHandler.UpdateModuleHandler)
-	router.DELETE("/lms/modules/:id", modulesHandler.DeleteModuleHandler)
+	router.POST("/lms/modules", authMiddleware, modulesHandler.CreateModuleHandler)
+	router.GET("/lms/modules/course/:id", authMiddleware, modulesHandler.ShowModulesForCourseHandler)
+	router.GET("/lms/modules", authMiddleware, modulesHandler.ShowAllModulesHandler)
+	router.GET("/lms/modules/:id", authMiddleware, modulesHandler.ShowModuleHandler)
+	router.PUT("/lms/modules/:id", authMiddleware, modulesHandler.UpdateModuleHandler)
+	router.DELETE("/lms/modules/:id", authMiddleware, modulesHandler.DeleteModuleHandler)
 
 	lessonsHandler := &handlers.LessonsHandler{Models: app.models}
-	router.POST("/lms/lessons", lessonsHandler.CreateLessonHandler)
-	router.GET("/lms/lessons/module/:id", lessonsHandler.ShowAllLessonsForModuleHandler)
-	router.GET("/lms/lessons/:id", lessonsHandler.ShowLessonHandler)
-	router.PUT("/lms/lessons/:id", lessonsHandler.UpdateLessonHandler)
-	router.DELETE("/lms/lessons/:id", lessonsHandler.DeleteLessonHandler)
+	router.POST("/lms/lessons", authMiddleware, lessonsHandler.CreateLessonHandler)
+	router.GET("/lms/lessons/module/:id", authMiddleware, lessonsHandler.ShowAllLessonsForModuleHandler)
+	router.GET("/lms/lessons/:id", authMiddleware, lessonsHandler.ShowLessonHandler)
+	router.PUT("/lms/lessons/:id", authMiddleware, lessonsHandler.UpdateLessonHandler)
+	router.DELETE("/lms/lessons/:id", authMiddleware, lessonsHandler.DeleteLessonHandler)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),
