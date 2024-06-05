@@ -6,6 +6,7 @@ import (
 	"github.com/rs/zerolog"
 	"lms-crud-api/internal/data"
 	"lms-crud-api/internal/helpers"
+	"lms-crud-api/middleware"
 	"net/http"
 	"os"
 )
@@ -52,6 +53,10 @@ func (h *CoursesHandler) ShowAllCoursesHandler(c *gin.Context) {
 		return
 	}
 
+	println(c.GetHeader("Authorization"))
+	claims, _ := c.Get("claims")
+	userClaims := claims.(*middleware.Claims)
+	print(userClaims.UserId)
 	helpers.WriteJSON(c, http.StatusOK, gin.H{"courses": courses})
 }
 
