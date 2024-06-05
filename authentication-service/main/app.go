@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/pressly/goose"
+	"github.com/streadway/amqp"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -220,18 +221,12 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := SendActivationEmail(user.Email, user.ActivationLink); err != nil {
-		http.Error(w, "Failed to send activation email", http.StatusInternalServerError)
-		log.Printf("Failed to send activation email: %v", err)
-		return
+	// Отправка сообщения на почту
+	if err := SendMessageToQueue(user.Email, "Для активации вашей учетной записи перейдите по ссылке: "+user.ActivationLink); err != nil {
+		log.Printf("Failed to send activation email to queue: %v", err)
 	}
 
 	w.WriteHeader(http.StatusCreated)
-}
-
-func SendActivationEmail(to, activationLink string) error {
-	// TODO: RAbbit
-	return nil
 }
 
 func ResendActivationLinkHandler(w http.ResponseWriter, r *http.Request) {
@@ -276,17 +271,16 @@ func ResendActivationLinkHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := SendActivationEmail(user.Email, user.ActivationLink); err != nil {
-		http.Error(w, "Failed to send activation email", http.StatusInternalServerError)
-		log.Printf("Failed to send activation email: %v", err)
-		return
-	}
-
 	jsonResponse, err := json.Marshal(map[string]string{"message": "Activation link resent successfully"})
 	if err != nil {
 		http.Error(w, "Failed to marshal response", http.StatusInternalServerError)
 		log.Printf("Failed to marshal response: %v", err)
 		return
+	}
+
+	// Отправка сообщения на почту
+	if err := SendMessageToQueue(user.Email, "Для активации вашей учетной записи перейдите по ссылке: "+user.ActivationLink); err != nil {
+		log.Printf("Failed to send activation email to queue: %v", err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -333,6 +327,11 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonResponse)
+
+	// Отправка сообщения на почту о успешном входе
+	if err := SendMessageToQueue(user.Email, "Успешный вход в систему"); err != nil {
+		log.Printf("Failed to send login email to queue: %v", err)
+	}
 }
 
 func ActivateHandler(w http.ResponseWriter, r *http.Request) {
@@ -354,6 +353,12 @@ func ActivateHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "User activated successfully"})
+
+	// Отправка сообщения на почту об успешной активации
+	if err := SendMessageToQueue(user.Email, "Ваша учетная запись успешно активирована"); err != nil {
+		log.Printf("Failed to send activation email to queue: %v", err)
+	}
+
 }
 
 func GenerateToken(userId uint, fname string, email string, isActivated bool, role string) (string, error) {
@@ -498,4 +503,60 @@ func ValidateTokenHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonResponse)
+}
+
+func SendMessageToQueue(messageTo, content string) error {
+	// Соединение с RabbitMQ
+	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	if err != nil {
+		return fmt.Errorf("failed to connect to RabbitMQ: %w", err)
+	}
+	defer conn.Close()
+
+	// Открытие канала
+	ch, err := conn.Channel()
+	if err != nil {
+		return fmt.Errorf("failed to open a channel: %w", err)
+	}
+	defer ch.Close()
+
+	// Объявление очереди
+	q, err := ch.QueueDeclare(
+		"notification_queue",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to declare a queue: %w", err)
+	}
+
+	// Создание сообщения в формате JSON
+	message := map[string]string{
+		"messageTo": messageTo,
+		"content":   content,
+	}
+	body, err := json.Marshal(message)
+	if err != nil {
+		return fmt.Errorf("failed to marshal message: %w", err)
+	}
+
+	// Отправка сообщения в очередь
+	err = ch.Publish(
+		"",
+		q.Name,
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "application/json",
+			Body:        body,
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to publish message to queue: %w", err)
+	}
+
+	return nil
 }
