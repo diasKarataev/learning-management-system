@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"lms-crud-api/internal/data"
 	"lms-crud-api/internal/helpers"
@@ -33,6 +34,8 @@ func (h *ModulesHandler) CreateModuleHandler(c *gin.Context) {
 		helpers.ServerErrorResponse(c, err)
 		return
 	}
+	courseName := h.Models.Courses.GetCourseNameById(int(module.CourseID))
+	helpers.SendMessageToQueue(logger, ch, fmt.Sprintf("New module: %s is added to %s course!", module.Title, courseName))
 
 	helpers.WriteJSON(c, http.StatusCreated, gin.H{"module": module})
 }
@@ -109,6 +112,9 @@ func (h *ModulesHandler) UpdateModuleHandler(c *gin.Context) {
 		helpers.ServerErrorResponse(c, err)
 		return
 	}
+
+	courseName := h.Models.Courses.GetCourseNameById(int(module.CourseID))
+	helpers.SendMessageToQueue(logger, ch, fmt.Sprintf("Module: %s is updated in %s course!", module.Title, courseName))
 
 	helpers.WriteJSON(c, http.StatusOK, gin.H{"module": module})
 }

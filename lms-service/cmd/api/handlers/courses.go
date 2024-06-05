@@ -1,10 +1,18 @@
 package handlers
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 	"lms-crud-api/internal/data"
 	"lms-crud-api/internal/helpers"
 	"net/http"
+	"os"
+)
+
+var (
+	logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger()
+	ch, _  = helpers.ConnectToRabbitMQ()
 )
 
 type CoursesHandler struct {
@@ -31,6 +39,8 @@ func (h *CoursesHandler) CreateCourseHandler(c *gin.Context) {
 		helpers.ServerErrorResponse(c, err)
 		return
 	}
+
+	helpers.SendMessageToQueue(logger, ch, fmt.Sprintf("New course: %s is added!", course.Title))
 
 	helpers.WriteJSON(c, http.StatusCreated, gin.H{"course": course})
 }
@@ -93,6 +103,8 @@ func (h *CoursesHandler) UpdateCourseHandler(c *gin.Context) {
 		helpers.ServerErrorResponse(c, err)
 		return
 	}
+
+	helpers.SendMessageToQueue(logger, ch, fmt.Sprintf("The %s course is updated!", course.Title))
 
 	helpers.WriteJSON(c, http.StatusOK, gin.H{"course": course})
 }

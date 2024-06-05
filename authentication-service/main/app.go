@@ -22,8 +22,8 @@ const (
 	host     = "localhost"
 	port     = 5432
 	user     = "postgres"
-	password = "Infinitive"
-	dbname   = "d.karataevDB"
+	password = "91926499"
+	dbname   = "lms_auth"
 )
 
 var (

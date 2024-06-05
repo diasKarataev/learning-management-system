@@ -36,3 +36,21 @@ func (m LessonModel) Update(lesson *Lesson) error {
 func (m LessonModel) Delete(id uint) error {
 	return m.DB.Delete(&Lesson{}, id).Error
 }
+
+func (m LessonModel) GetModuleName(moduleID int) string {
+	var moduleName string
+	result := m.DB.Table("modules").Select("title").Where("id = ?", moduleID).First(&moduleName)
+	if result.Error != nil {
+		return ""
+	}
+	return moduleName
+}
+
+func (m LessonModel) GetCourseNameByModuleId(moduleID int) string {
+	var courseName string
+	result := m.DB.Table("modules").Select("courses.title").Joins("JOIN courses ON modules.course_id = courses.id").Where("modules.id = ?", moduleID).First(&courseName)
+	if result.Error != nil {
+		return ""
+	}
+	return courseName
+}

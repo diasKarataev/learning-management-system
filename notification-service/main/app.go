@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/jordan-wright/email"
-	"github.com/pressly/goose"
 	"github.com/streadway/amqp"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -20,8 +19,8 @@ const (
 	host     = "localhost"
 	port     = 5432
 	user     = "postgres"
-	password = "Infinitive"
-	dbname   = "d.mukhamedinDB"
+	password = "91926499"
+	dbname   = "lms_notfication"
 )
 
 var (
@@ -37,8 +36,8 @@ func failOnError(err error, msg string) {
 }
 
 func main() {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=UTC", host, user, password, dbname, port)
-	db := initDB(dsn)
+	//dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=UTC", host, user, password, dbname, port)
+	//db := initDB(dsn)
 
 	// Loading .env file
 	err := godotenv.Load()
@@ -46,15 +45,15 @@ func main() {
 		log.Fatalf("Error loading .env file")
 	}
 
-	// Applying migrations
-	sqlDB, err := db.DB()
-	if err != nil {
-		log.Fatalf("Ошибка при получении объекта базы данных: %v", err)
-	}
-	err = goose.Up(sqlDB, "./migrations")
-	if err != nil {
-		log.Fatalf("Ошибка при применении миграций: %v", err)
-	}
+	//// Applying migrations
+	//sqlDB, err := db.DB()
+	//if err != nil {
+	//	log.Fatalf("Ошибка при получении объекта базы данных: %v", err)
+	//}
+	//err = goose.Up(sqlDB, "./migrations")
+	//if err != nil {
+	//	log.Fatalf("Ошибка при применении миграций: %v", err)
+	//}
 
 	// RabbitMQ
 

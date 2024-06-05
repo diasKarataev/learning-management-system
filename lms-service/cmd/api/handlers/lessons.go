@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"lms-crud-api/internal/data"
 	"lms-crud-api/internal/helpers"
@@ -37,6 +38,10 @@ func (h *LessonsHandler) CreateLessonHandler(c *gin.Context) {
 		helpers.ServerErrorResponse(c, err)
 		return
 	}
+
+	moduleName := h.Models.Lessons.GetModuleName(int(lesson.ModuleID))
+	courseName := h.Models.Lessons.GetCourseNameByModuleId(int(lesson.ModuleID))
+	helpers.SendMessageToQueue(logger, ch, fmt.Sprintf("New lesson: %s is added to %s module of %s course!", lesson.Title, moduleName, courseName))
 
 	helpers.WriteJSON(c, http.StatusCreated, gin.H{"lesson": lesson})
 }
@@ -107,6 +112,10 @@ func (h *LessonsHandler) UpdateLessonHandler(c *gin.Context) {
 		helpers.ServerErrorResponse(c, err)
 		return
 	}
+
+	moduleName := h.Models.Lessons.GetModuleName(int(lesson.ModuleID))
+	courseName := h.Models.Lessons.GetCourseNameByModuleId(int(lesson.ModuleID))
+	helpers.SendMessageToQueue(logger, ch, fmt.Sprintf("Lesson: %s is updated in %s module of %s course!", lesson.Title, moduleName, courseName))
 
 	helpers.WriteJSON(c, http.StatusOK, gin.H{"lesson": lesson})
 }

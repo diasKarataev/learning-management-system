@@ -35,3 +35,12 @@ func (m CourseModel) Update(course *Course) error {
 func (m CourseModel) Delete(id uint) error {
 	return m.DB.Delete(&Course{}, id).Error
 }
+
+func (m CourseModel) GetCourseNameById(courseId int) string {
+	var courseName string
+	result := m.DB.Table("courses").Select("title").Where("id = ?", courseId).First(&courseName)
+	if result.Error != nil {
+		return ""
+	}
+	return courseName
+}

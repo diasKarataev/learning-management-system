@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"lms-crud-api/internal/helpers"
 	"log"
 	"net/http"
 	"os"
@@ -36,7 +37,7 @@ func main() {
 	var cfg config
 	cfg.port = 4000
 	cfg.env = "development"
-	cfg.db.dsn = "postgres://postgres:Infinitive@localhost/lms-service?sslmode=disable"
+	cfg.db.dsn = "postgres://postgres:91926499@localhost/lmscrud?sslmode=disable"
 
 	db, err := openDB(cfg)
 	if err != nil {
@@ -92,6 +93,13 @@ func main() {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
+
+	ch, _ := helpers.ConnectToRabbitMQ()
+	err = helpers.DeclareQueue(ch, "notification_queue")
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Could not declare queue")
+	}
+	defer ch.Close()
 
 	logger.Info().Msgf("Starting server on %s", srv.Addr)
 	err = srv.ListenAndServe()
