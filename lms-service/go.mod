@@ -4,12 +4,13 @@ go 1.22
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/form3tech-oss/jwt-go v3.2.5+incompatible
 	github.com/gin-gonic/gin v1.10.0
 	github.com/golang-migrate/migrate/v4 v4.17.1
 	github.com/jinzhu/gorm v1.9.16
 	github.com/pressly/goose v2.7.0+incompatible
 	github.com/rs/zerolog v1.33.0
+	github.com/streadway/amqp v1.1.0
+	gorm.io/gorm v1.25.10
 )
 
 require (
@@ -30,7 +31,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
-	github.com/jinzhu/now v1.1.4 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
 	github.com/kr/pretty v0.3.1 // indirect

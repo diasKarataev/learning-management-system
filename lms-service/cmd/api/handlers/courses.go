@@ -13,7 +13,7 @@ import (
 
 var (
 	logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger()
-	ch, _  = helpers.ConnectToRabbitMQ()
+	ch, _  = data.ConnectToRabbitMQ()
 )
 
 type CoursesHandler struct {
@@ -41,7 +41,7 @@ func (h *CoursesHandler) CreateCourseHandler(c *gin.Context) {
 		return
 	}
 
-	helpers.SendMessageToQueue(logger, ch, fmt.Sprintf("New course: %s is added!", course.Title))
+	h.Models.Courses.SendMessageToQueue(logger, ch, c, fmt.Sprintf("New course: %s is added!", course.Title))
 
 	helpers.WriteJSON(c, http.StatusCreated, gin.H{"course": course})
 }
@@ -109,7 +109,7 @@ func (h *CoursesHandler) UpdateCourseHandler(c *gin.Context) {
 		return
 	}
 
-	helpers.SendMessageToQueue(logger, ch, fmt.Sprintf("The %s course is updated!", course.Title))
+	h.Models.Courses.SendMessageToQueue(logger, ch, c, fmt.Sprintf("The %s course is updated!", course.Title))
 
 	helpers.WriteJSON(c, http.StatusOK, gin.H{"course": course})
 }

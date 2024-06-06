@@ -35,7 +35,7 @@ func (h *ModulesHandler) CreateModuleHandler(c *gin.Context) {
 		return
 	}
 	courseName := h.Models.Courses.GetCourseNameById(int(module.CourseID))
-	helpers.SendMessageToQueue(logger, ch, fmt.Sprintf("New module: %s is added to %s course!", module.Title, courseName))
+	h.Models.Courses.SendMessageToQueue(logger, ch, c, fmt.Sprintf("New module: %s is added to %s course!", module.Title, courseName))
 
 	helpers.WriteJSON(c, http.StatusCreated, gin.H{"module": module})
 }
@@ -114,7 +114,7 @@ func (h *ModulesHandler) UpdateModuleHandler(c *gin.Context) {
 	}
 
 	courseName := h.Models.Courses.GetCourseNameById(int(module.CourseID))
-	helpers.SendMessageToQueue(logger, ch, fmt.Sprintf("Module: %s is updated in %s course!", module.Title, courseName))
+	h.Models.Courses.SendMessageToQueue(logger, ch, c, fmt.Sprintf("Module: %s is updated in %s course!", module.Title, courseName))
 
 	helpers.WriteJSON(c, http.StatusOK, gin.H{"module": module})
 }
