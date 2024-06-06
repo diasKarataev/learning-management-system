@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/jordan-wright/email"
+	"github.com/pressly/goose"
 	"github.com/streadway/amqp"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -35,35 +37,60 @@ func failOnError(err error, msg string) {
 	}
 }
 
+type Notification struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	MessageTo string    `json:"messageTo"`
+	Content   string    `json:"content"`
+	SentAt    time.Time `json:"sentAt"`
+}
+
 func main() {
-	//dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=UTC", host, user, password, dbname, port)
-	//db := initDB(dsn)
+	// Set up logging to a file
+	logFile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatalf("Error opening log file: %v", err)
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
+
+	log.Println("Application started")
+
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=UTC", host, user, password, dbname, port)
+	db := initDB(dsn)
 
 	// Loading .env file
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatalf("Error loading .env file")
 	}
+	log.Println("Loaded .env file successfully")
 
-	//// Applying migrations
-	//sqlDB, err := db.DB()
-	//if err != nil {
-	//	log.Fatalf("Ошибка при получении объекта базы данных: %v", err)
-	//}
-	//err = goose.Up(sqlDB, "./migrations")
-	//if err != nil {
-	//	log.Fatalf("Ошибка при применении миграций: %v", err)
-	//}
+	// Applying migrations
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatalf("Ошибка при получении объекта базы данных: %v", err)
+	}
+	err = goose.Up(sqlDB, "./migrations")
+	if err != nil {
+		log.Fatalf("Ошибка при применении миграций: %v", err)
+	}
+	log.Println("Database migrations applied successfully")
+
+	// Auto migrate Notification model
+	db.AutoMigrate(&Notification{})
+	log.Println("Database migrated")
 
 	// RabbitMQ
 
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
+	log.Println("Connected to RabbitMQ")
 
 	ch, err := conn.Channel()
 	failOnError(err, "Failed to open a channel")
 	defer ch.Close()
+	log.Println("RabbitMQ channel opened")
 
 	q, err := ch.QueueDeclare(
 		"notification_queue",
